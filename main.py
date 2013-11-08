@@ -9,9 +9,9 @@ import sqlite3
 
 HOST="irc.imaginarynet.org.uk" 
 PORT=6667 
-NICK="hamhut_bot" 
-IDENT="hamhut_bot" 
-REALNAME="hamhut_bot" 
+NICK="hbot" 
+IDENT="hbot" 
+REALNAME="hbot" 
 CHAN="#compsoc" 
 readbuffer="" 
 sweardict = ["fuck", "shit", "bollocks","cunt","balls"]
@@ -45,17 +45,23 @@ def queryall(query):
 def parsebot(user, userin):
 	#this is where all the heavy lifting is!
 	inlist = userin.split(' ')
-	if inlist[0] == ".myswears":
+	q = inlist[0]
+	command = q.split('.')[1]
+	tail = ' '.join(inlist[1:])
+	if q == ".myswears":
 		ret = queryone("Select * from sw_count where name = '%s'" % user)
 		if ret == None:
 			return None
 		return "%s: %s swears" % (ret[0], ret[1])
-	elif inlist[0] == ".hello":
+	elif q == ".hello":
 		return "hello %s" % user
-	elif inlist[0] == ".slap":
-		return "%s slaps %s" % (user, ' '.join(inlist[1:]))
+	elif q == ".slap":
+		return "%s slaps %s" % (user, tail)
+	elif q == ".addsw":
+		#adds a swear word to the list
+		update("INSERT INTO swords values('%s', 0)")
 	else:
-		return "%s %ss %s" % (user, inlist[0], ' '.join(inlist[1:]))
+		return "%s %ss %s" % (user, command, tail)
 def updatebot(user, userin):
 	#this doesn't return anything, but does things like update the swear count
 	#add user to the database if needed
