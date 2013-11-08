@@ -70,7 +70,7 @@ def parsebot(user, userin):
 	elif command == "addsw":
 		#adds a swear word to the list
 		#first check if word exists
-		if queryone("select * from swords where name = '%s'" % tail) == None:
+		if queryone("select * from swords where name = '%s'" % tail) == None and len(tail) > 2:
 			update("INSERT INTO swords values('%s', 0)" % tail )
 		else:
 			return "%s already exists" % tail
@@ -82,7 +82,11 @@ def parsebot(user, userin):
 			ret += "%s, " % i[0]
 		return ret
 	elif command == "leaderboard":
-		return queryall("select * from sw_count order by swear_count desc limit 5")
+		tmp = queryall("select * from sw_count order by swear_count desc limit 5")
+		ret = ""
+		for i in tmp:
+			ret += "%s: %s, " % (i[0], i[1])
+		return ret
 		
 		
 	else:
@@ -127,12 +131,13 @@ def process(line):
 		#this means that the bot is being asked something
 		ircout = parsebot(user,userin)
 		#need to return an array of strings here
-		for (i,val) in enumerate(ircout):
-			tmp = ""
-			for j in val:
-				tmp = tmp + "a"
-			ircout[i] = "%s %s :%s\r\n" % (protocol, CHAN, tmp)
-		return ircout
+		#for (i,val) in enumerate(ircout):
+			#tmp = ""
+			#for j in val:
+				#tmp = tmp + "a"
+			#ircout[i] = "%s %s :%s\r\n" % (protocol, CHAN, tmp)
+		#print ircout
+		#return ircout
 	elif len(userin) > 1:
 		#this is the information gathering condition
 		updatebot(user,userin)
