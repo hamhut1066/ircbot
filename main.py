@@ -12,7 +12,7 @@ PORT=6667
 NICK="hbot" 
 IDENT="hbot" 
 REALNAME="hbot" 
-CHAN="#compsoc" 
+CHAN="#bottest" 
 readbuffer="" 
 sweardict = ["fuck", "shit", "bollocks","cunt","balls"]
 conn = sqlite3.connect("ircbot.db") 
@@ -23,23 +23,23 @@ def database():
 	return cursor
 
 def update(query):
-	database().execute(query)
+	database().execute(query.lower())
 	conn.commit()
 
 
 def queryone(query):
 	cursor = database()
-	cursor.execute(query)
+	cursor.execute(query.lower())
 
 	return cursor.fetchone()
 
 def queryall(query):
 	cursor = database()
-	cursor.execute(query)
+	cursor.execute(query.lower())
 
 	all_rows = cursor.fetchall()
-	for row in all_rows:
-		print('{0} : {1}'.format(row[0], row[1]))
+	#return "queryall"
+	return all_rows
 #----------------------------------end-database-----------------------------
 
 def parsebot(user, userin):
@@ -48,36 +48,64 @@ def parsebot(user, userin):
 	q = inlist[0]
 	command = q.split('.')[1]
 	tail = ' '.join(inlist[1:])
-	if q == ".myswears":
+	if userin.startswith('..'):
+		updatebot(user, userin)
+		return None
+	elif command == "":
+		return None
+	elif command == "myswears":
 		ret = queryone("Select * from sw_count where name = '%s'" % user)
 		if ret == None:
 			return None
 		return "%s: %s swears" % (ret[0], ret[1])
-	elif q == ".hello":
+	elif command == "swears":
+		ret = queryone("Select * from sw_count where name = '%s'" % tail)
+		if ret == None:
+			return None
+		return "%s: %s swears" % (ret[0], ret[1])
+	elif command == "hello":
 		return "hello %s" % user
-	elif q == ".slap":
+	elif command == "slap":
 		return "%s slaps %s" % (user, tail)
-	elif q == ".addsw":
+	elif command == "addsw":
 		#adds a swear word to the list
-		update("INSERT INTO swords values('%s', 0)")
+		#first check if word exists
+		if queryone("select * from swords where name = '%s'" % tail) == None:
+			update("INSERT INTO swords values('%s', 0)" % tail )
+		else:
+			return "%s already exists" % tail
+	elif command == "lsw":
+		#lists swear words
+		tmp = queryall("select name from swords")
+		ret = ""
+		for i in tmp:
+			ret += "%s, " % i[0]
+		return ret
+	elif command == "leaderboard":
+		return queryall("select * from sw_count order by swear_count desc limit 5")
+		
+		
 	else:
 		return "%s %ss %s" % (user, command, tail)
+
 def updatebot(user, userin):
 	#this doesn't return anything, but does things like update the swear count
 	#add user to the database if needed
 	try:
 		out = queryone("Select * from sw_count where name = '%s'" % user)
-		if out == None:
+		if out == None and '.' not in user and "bot" not in user:
 			update("INSERT INTO sw_count values('%s', 0)" % user)
 	except:
 		update("INSERT INTO sw_count values('%s', 0)" % user)
 
 	#this needs to check if a user uses a swear word
 	#read swear words from the database
-	for sw in sweardict:
-		if sw in userin:
+	sweardb = queryall("Select name from swords")
+	for i in sweardb:
+		if i[0] in userin:
 			#add a swear to the database
 			update("UPDATE sw_count SET swear_count = swear_count + 1 WHERE name = '%s'" % user)
+			update("UPDATE swords SET count = count + 1 WHERE name = '%s'" % user)
 
 def process(line): 
 	# first split the string up into user, and input
@@ -85,6 +113,7 @@ def process(line):
 	protocol = "PRIVMSG"
 	ircout = ""
 	channel = ""
+
 	try:
 		user = line[0].split('!')[0].split(':')[1]
 		channel = line[2]
@@ -92,21 +121,30 @@ def process(line):
 	except:
 		user = "n/a"
 	#format the return string
+
 	#-------------------------all-logic-for-the-irc-bot-goes-here------
 	if userin.startswith('.'):
 		#this means that the bot is being asked something
 		ircout = parsebot(user,userin)
+		#need to return an array of strings here
+		for (i,val) in enumerate(ircout):
+			tmp = ""
+			for j in val:
+				tmp = tmp + "a"
+			ircout[i] = "%s %s :%s\r\n" % (protocol, CHAN, tmp)
+		return ircout
 	elif len(userin) > 1:
 		#this is the information gathering condition
 		updatebot(user,userin)
 		#this can happen because we don't want to bot to return anything
 		return None
 
-
 	#this if statement is here to return nothing if the bot is not connected to the right channel
 	if channel != CHAN:
 		#return None
 		return "JOIN :%s\r\n" % CHAN
+	elif ircout == None: #if the bot is returning null
+		return None
 	rstring = "%s %s :%s\r\n" % (protocol, CHAN, ircout)
 	#print rstring
 	return rstring
@@ -118,21 +156,22 @@ s.send("NICK %s\r\n" % NICK)
 s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME)) 
 #s.send("JOIN :%s\r\n" % CHAN) 
 #s.send("PRIVMSG %s :%s\r\n" % (CHAN, "Hello There!")) 
-#s.send("PRIVMSG %s :%s\r\n" % (CHAN, "I am a bot")) 
+#s.send("PRIVMSG %s :%s\r\n" % (CHAN, "...")) 
 
 while 1: 
         readbuffer=readbuffer+s.recv(1024) 
         temp=string.split(readbuffer, "\n") 
         readbuffer=temp.pop( ) 
  
-        for line in temp: 
-                line=string.rstrip(line) 
-                line=string.split(line) 
-                # add logic here to parse user commands and such 
+        for line in temp:
+		line=string.rstrip(line)
+		line=string.split(line)
+		# add logic here to parse user commands and such 
 		#print ' '.join(line )
-		if(line[0]=="PING"): 
-			s.send("PONG %s\r\n" % line[1]) 
+		if(line[0]=="PING"):
+			s.send("PONG %s\r\n" % line[1])
 		else:
 			retval = process(line)
 			if retval != None:
-				s.send(process(line))
+				for out in retval:
+					s.send(out)
