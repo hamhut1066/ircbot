@@ -71,7 +71,7 @@ def parsebot(user, userin):
 		#adds a swear word to the list
 		#first check if word exists
 		if queryone("select * from swords where name = '%s'" % tail) == None and len(tail) > 2:
-			update("INSERT INTO swords values('%s', 0)" % tail )
+			adminupdate(user, "INSERT INTO swords values('%s', 0)" % tail )
 		else:
 			return "%s already exists" % tail
 	elif command == "lsw":
@@ -92,6 +92,12 @@ def parsebot(user, userin):
 	else:
 		return "%s %ss %s" % (user, command, tail)
 
+def adminupdate(user, query):
+	if queryone("select name from admin where name = '%s'" % user) == None:
+		#no permission
+		return "permission denied..."
+	else:
+		update(query)
 def updatebot(user, userin):
 	#this doesn't return anything, but does things like update the swear count
 	#add user to the database if needed
