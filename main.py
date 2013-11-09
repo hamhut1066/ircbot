@@ -12,9 +12,8 @@ PORT=6667
 NICK="hbot" 
 IDENT="hbot" 
 REALNAME="hbot" 
-CHAN="#compsoc" 
+CHAN="#bottest" 
 readbuffer="" 
-sweardict = ["fuck", "shit", "bollocks","cunt","balls"]
 conn = sqlite3.connect("ircbot.db") 
 
 #--------------------------------------database-----------------------------
@@ -71,7 +70,11 @@ def parsebot(user, userin):
 		#adds a swear word to the list
 		#first check if word exists
 		if queryone("select * from swords where name = '%s'" % tail) == None and len(tail) > 2:
-			return adminupdate(user, "INSERT INTO swords values('%s', 0)" % tail )
+			try:
+				args = tail.split(' ')
+				return adminupdate(user, "INSERT INTO swords values('%s', %s)" % (args[0],args[1] ))
+			except:
+				return ".addsw <name> <weight>"
 		else:
 			return "%s already exists" % tail
 	elif command == "lsw":
@@ -135,8 +138,9 @@ def updatebot(user, userin):
 	for i in sweardb:
 		if i[0] in userin:
 			#add a swear to the database
-			update("UPDATE sw_count SET swear_count = swear_count + 1 WHERE name = '%s'" % user)
-			update("UPDATE swords SET count = count + 1 WHERE name = '%s'" % user)
+			count = queryone("select count from swords where name = '%s'" % i[0])
+			update("UPDATE sw_count SET swear_count = swear_count + %s WHERE name = '%s'" % (count[0],user))
+			#update("UPDATE swords SET count = count + 1 WHERE name = '%s'" % user)
 
 def process(line): 
 	# first split the string up into user, and input
@@ -190,7 +194,7 @@ s.send("NICK %s\r\n" % NICK)
 s.send("USER %s %s bla :%s\r\n" % (IDENT, HOST, REALNAME)) 
 #s.send("JOIN :%s\r\n" % CHAN) 
 #s.send("PRIVMSG %s :%s\r\n" % (CHAN, "Hello There!")) 
-#s.send("PRIVMSG %s :%s\r\n" % (CHAN, "...")) 
+s.send("PRIVMSG %s :%s\r\n" % (CHAN, "...")) 
 
 while 1: 
         readbuffer=readbuffer+s.recv(1024) 
