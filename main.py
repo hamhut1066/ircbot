@@ -12,7 +12,7 @@ PORT=6667
 NICK="hbot" 
 IDENT="hbot" 
 REALNAME="hbot" 
-CHAN="#bottest" 
+CHAN="#compsoc" 
 readbuffer="" 
 sweardict = ["fuck", "shit", "bollocks","cunt","balls"]
 conn = sqlite3.connect("ircbot.db") 
@@ -71,7 +71,7 @@ def parsebot(user, userin):
 		#adds a swear word to the list
 		#first check if word exists
 		if queryone("select * from swords where name = '%s'" % tail) == None and len(tail) > 2:
-			adminupdate(user, "INSERT INTO swords values('%s', 0)" % tail )
+			return adminupdate(user, "INSERT INTO swords values('%s', 0)" % tail )
 		else:
 			return "%s already exists" % tail
 	elif command == "lsw":
@@ -80,6 +80,26 @@ def parsebot(user, userin):
 		ret = ""
 		for i in tmp:
 			ret += "%s, " % i[0]
+		return ret
+	elif command == "reset":
+		adminupdate(user, "update sw_count set swear_count = 0 where name = '%s'" % tail)
+	elif command == "op":
+		#give someone admin rights
+		if queryone("select * from admin where name = '%s'" % tail) == None:
+			return adminupdate (user, "insert into admin values('%s')" % tail, "%s is now op" % tail)
+		else:
+			return "user is already op"
+	elif command == "nop":
+		#give someone admin rights
+		if queryone("select * from admin where name = '%s'" % tail) != None:
+			return adminupdate (user, "delete from admin where name = '%s'" % tail, "%s is no longer op" % tail)
+		else:
+			return None
+	elif command == "lop":
+		tmp = queryall("select * from admin")
+		ret = ""
+		for i in tmp:
+			ret += "%s, " % i
 		return ret
 	elif command == "leaderboard":
 		tmp = queryall("select * from sw_count order by swear_count desc limit 5")
@@ -92,12 +112,13 @@ def parsebot(user, userin):
 	else:
 		return "%s %ss %s" % (user, command, tail)
 
-def adminupdate(user, query):
+def adminupdate(user, query, msg=None):
 	if queryone("select name from admin where name = '%s'" % user) == None:
 		#no permission
 		return "permission denied..."
 	else:
 		update(query)
+		return msg
 def updatebot(user, userin):
 	#this doesn't return anything, but does things like update the swear count
 	#add user to the database if needed
@@ -123,6 +144,8 @@ def process(line):
 	protocol = "PRIVMSG"
 	ircout = ""
 	channel = ""
+	for (i, val) in enumerate(line):
+		line[i] = unicode(line[i], 'utf8')
 
 	try:
 		user = line[0].split('!')[0].split(':')[1]
@@ -182,7 +205,11 @@ while 1:
 		if(line[0]=="PING"):
 			s.send("PONG %s\r\n" % line[1])
 		else:
-			retval = process(line)
-			if retval != None:
-				for out in retval:
-					s.send(out)
+			try: 
+				string.decode('utf-8')	
+				print "is unicode"
+			except:
+				retval = process(line)
+				if retval != None:
+					for out in retval:
+						s.send(out)
