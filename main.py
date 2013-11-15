@@ -12,7 +12,7 @@ PORT=6667
 NICK="hbot" 
 IDENT="hbot" 
 REALNAME="hbot" 
-CHAN="#bottest" 
+CHAN="#compsoc" 
 readbuffer="" 
 conn = sqlite3.connect("ircbot.db") 
 
